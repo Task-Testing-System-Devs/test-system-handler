@@ -9,7 +9,7 @@ let functionUrl;
 
 const browserPool = createPool({
     create: async () => {
-        const browser = await puppeteer.launch({ headless: true });
+        const browser = await puppeteer.launch({ headless: "new" });
         return browser;
     },
     destroy: async (browser) => {
@@ -76,22 +76,30 @@ async function auth(ejudgeLogin, ejudgePassword, contestID) {
     const maxRetries = 15;
     let retries = 0;
     let authenticated = false;
+
     while (retries < maxRetries && !authenticated) {
         await withPage(async (page) => {
             try {
                 await page.goto('http://37.252.0.155/cgi-bin/master');
-                await page.waitForSelector('input[name=login]', { timeout: 3000 });
-                await page.waitForSelector('input[name=password]', { timeout: 3000 });
-                await page.waitForSelector('input[name=contest_id]', { timeout: 3000 });
-                await page.waitForSelector('select[name=role]', { timeout: 3000 });
-                await page.waitForSelector('input[name=action_2]', { timeout: 3000 });
+
+                // Wait for all required elements at once
+                await Promise.all([
+                    page.waitForSelector('input[name=login]', { timeout: 2000 }),
+                    page.waitForSelector('input[name=password]', { timeout: 2000 }),
+                    page.waitForSelector('input[name=contest_id]', { timeout: 2000 }),
+                    page.waitForSelector('select[name=role]', { timeout: 2000 }),
+                    page.waitForSelector('input[name=action_2]', { timeout: 2000 }),
+                ]);
+
                 await page.$eval('input[name=login]', (el, value) => { el.value = value }, ejudgeLogin);
                 await page.$eval('input[name=password]', (el, value) => { el.value = value }, ejudgePassword);
                 await page.$eval('input[name=contest_id]', (el, value) => { el.value = value }, contestID);
                 await page.$eval('select[name=role]', el => el.value = '6');
                 await page.click('input[name=action_2]');
+
                 currentUrl = page.url();
                 console.log(currentUrl);
+
                 if (currentUrl.includes('SID')) {
                     authenticated = true;
                 } else {
@@ -105,10 +113,12 @@ async function auth(ejudgeLogin, ejudgePassword, contestID) {
             }
         });
     }
+
     if (retries >= maxRetries && !authenticated) {
         throw new Error('Failed to authenticate after multiple retries');
     }
 }
+
 
 async function handleSolution(solutionFileBase64, taskID) {
     await withPage(async (page) => {
