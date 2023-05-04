@@ -1,14 +1,22 @@
 const express = require('express');
 const cors = require('cors');
 const { auth, handleSolution, getResult, parseTasks } = require('./puppeteer.js');
-const {currentUrl, tasks} = require("./puppeteer");
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
+const rateLimit = require("express-rate-limit");
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Защита от абьюза сервера (DDoS). На 5 минут максимум 300 запросов
+const limiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 300
+});
+
+app.use(limiter);
 
 app.post('/auth', async (req, res) => {
     try {
@@ -23,9 +31,7 @@ app.post('/auth', async (req, res) => {
 
 app.post('/handleSolution', async (req, res) => {
     try {
-        console.log(req.body);
         const { solutionFileBase64, taskID } = req.body;
-        console.log(taskID);
         if (!taskID) {
             res.status(400).json({ error: 'Task ID is required' });
             return;
@@ -37,7 +43,6 @@ app.post('/handleSolution', async (req, res) => {
         res.status(500).json({ error: 'Error handling solution' });
     }
 });
-
 
 app.get('/getResult', async (req, res) => {
     try {
@@ -56,6 +61,11 @@ app.get('/parseTasks', async (req, res) => {
         console.log(error.message);
         res.status(500).json({ error: 'Ошибка при получении заданий. Возможно, вы не авторизованы.' });
     }
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'An error occurred while processing the request' });
 });
 
 app.listen(port, () => {

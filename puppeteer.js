@@ -1,25 +1,16 @@
 const puppeteer = require('puppeteer');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const { createPool } = require('generic-pool');
 
-const solutionFilePath = 'solutions/'
-let browser;
-let browserIsOpen;
 let currentUrl;
 let functionUrl;
-let taskID;
-let fileExtension = solutionFilePath.split('.').pop();
-let contestID = 1;
-let ejudgeLogin = 'ejudge';
-let ejudgePassword = 'ejudge';
-
 
 // Create a browser pool
 const browserPool = createPool({
     create: async () => {
-        const browser = await puppeteer.launch({headless: "new"});
+        const browser = await puppeteer.launch({ headless: true });
         return browser;
     },
     destroy: async (browser) => {
@@ -29,7 +20,6 @@ const browserPool = createPool({
     min: 2,
     max: 10
 });
-
 
 class Task {
     constructor(probId, timeLimit, realTimeLimit, memoryLimit, title, description) {
@@ -62,6 +52,19 @@ const languageExtensions = {
 
 let currentPage = null;
 
+async function withPage(action) {
+    const browser = await browserPool.acquire();
+    try {
+        const page = await getPage(browser);
+        return await action(page);
+    } catch (error) {
+        console.error(error);
+    } finally {
+        await browserPool.release(browser);
+    }
+}
+
+
 async function getPage(browser) {
     if (currentPage) {
         return currentPage;
@@ -71,30 +74,32 @@ async function getPage(browser) {
 }
 
 async function auth(ejudgeLogin, ejudgePassword, contestID) {
-    const browser = await browserPool.acquire();
-    try {
-        const page = await getPage(browser);
-        await page.goto('http://37.252.0.155/cgi-bin/master');
-        await page.$eval('input[name=login]', function (el, value) { el.value = value }, ejudgeLogin);
-        await page.$eval('input[name=password]', function (el, value) { el.value = value }, ejudgePassword);
-        await page.$eval('input[name=contest_id]', function (el, value) { el.value = value }, contestID);
-        await page.$eval('select[name=role]', el => el.value = '6');
-        await page.click('input[name=action_2]');
-        currentUrl = page.url();
-        console.log(currentUrl);
-    } catch (error) {
-        console.error(error);
-    } finally {
-        await browserPool.release(browser);
-    }
+    await withPage(async (page) => {
+        try {
+            await page.goto('http://37.252.0.155/cgi-bin/master');
+            await page.waitForSelector('input[name=login]', { timeout: 3000 });
+            await page.waitForSelector('input[name=password]', { timeout: 3000 });
+            await page.waitForSelector('input[name=contest_id]', { timeout: 3000 });
+            await page.waitForSelector('select[name=role]', { timeout: 3000 });
+            await page.waitForSelector('input[name=action_2]', { timeout: 3000 });
+            await page.$eval('input[name=login]', function (el, value) { el.value = value }, ejudgeLogin);
+            await page.$eval('input[name=password]', function (el, value) { el.value = value }, ejudgePassword);
+            await page.$eval('input[name=contest_id]', function (el, value) { el.value = value }, contestID);
+            await page.$eval('select[name=role]', el => el.value = '6');
+            await page.click('input[name=action_2]');
+
+            currentUrl = page.url();
+            console.log(currentUrl);
+        } catch (error) {
+            console.error(error);
+        }
+    });
 }
 
 async function handleSolution(solutionFileBase64, taskID) {
-    const browser = await browserPool.acquire();
-    try {
-        const page = await getPage(browser);
+    await withPage(async (page) => {
         const solutionFilePath = path.join(os.tmpdir(), `solution.py`);
-        fs.writeFileSync(solutionFilePath, Buffer.from(solutionFileBase64, 'base64'));
+        await fs.writeFile(solutionFilePath, Buffer.from(solutionFileBase64, 'base64'));
         functionUrl = currentUrl.replace("&action=2", "") + `&problem=${taskID}&action_206`;
         console.log(functionUrl);
         await page.goto(functionUrl);
@@ -103,19 +108,12 @@ async function handleSolution(solutionFileBase64, taskID) {
         await inputUploadHandle.uploadFile(solutionFilePath);
         await page.click('input[type="submit"][name="action_40"]');
         await page.waitForTimeout(5000);
-        fs.unlinkSync(solutionFilePath);
-    } catch (error) {
-        console.error(error);
-    } finally {
-        await browserPool.release(browser);
-    }
+        await fs.unlink(solutionFilePath);
+    });
 }
 
-
 async function getResult() {
-    const browser = await browserPool.acquire();
-    try {
-        const page = await getPage(browser);
+    return await withPage(async (page) => {
         await page.goto(currentUrl);
         async function getSubmissionStatus() {
             return await page.$eval('table.b1 > tbody > tr:nth-child(2) > td:nth-child(6)', el => el.textContent.trim());
@@ -126,7 +124,7 @@ async function getResult() {
         let error = await getFailureDetails();
         let status = await getSubmissionStatus();
         while (status === 'Compiling...') {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Релоуд каждые 0.5с. Можно поменять, время в мс.
+            await new Promise(resolve => setTimeout(resolve, 500));
             await page.reload();
             status = await getSubmissionStatus();
         }
@@ -135,22 +133,16 @@ async function getResult() {
         }
         console.log('Final status:', status);
         return { status, error };
-    } catch (error) {
-        console.error(error);
-    } finally {
-        await browserPool.release(browser);
-    }
+    });
 }
 
 async function parseTasks() {
-    const tasks = []
-    const browser = await browserPool.acquire();
-    try {
-        const page = await getPage(browser);
+    const tasks = await withPage(async (page) => {
         functionUrl = currentUrl.replace("&action=2", "") + `&problem=1&action_206`;
         console.log(functionUrl);
         await page.goto(functionUrl);
 
+        const tasks = [];
         let currentTask = 1;
         while (true) {
             const probId = await page.$eval("table:nth-of-type(2) tr:nth-child(1) td:nth-child(2)", (el) => el.innerText);
@@ -172,20 +164,10 @@ async function parseTasks() {
                 break;
             }
         }
-        for (let i = 0; i < tasks.length; i++) {
-            console.log(tasks[i]);
-        }
-    } catch (error) {
-        console.error(error);
-    } finally {
-        await browserPool.release(browser);
-    }
-}
-async function main() {
-    // await auth();
-    //await handleSolution();
-    //await getResult();
-    //await parseTasks();
+        return tasks;
+    });
+
+    return tasks;
 }
 
 module.exports = {
@@ -196,7 +178,3 @@ module.exports = {
     currentUrl,
     functionUrl,
 };
-
-//main();
-
-
