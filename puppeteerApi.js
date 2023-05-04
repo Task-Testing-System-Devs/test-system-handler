@@ -10,10 +10,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Защита от абьюза сервера (DDoS). На 5 минут максимум 300 запросов
+// Защита от абьюза сервера (DDoS). На 5 минут максимум 500 запросов
 const limiter = rateLimit({
     windowMs: 5 * 60 * 1000,
-    max: 300
+    max: 500
 });
 
 app.use(limiter);
