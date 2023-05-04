@@ -2,14 +2,14 @@ const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
-const { createPool } = require('generic-pool');
+const {createPool} = require('generic-pool');
 
 let currentUrl;
 let functionUrl;
 
 const browserPool = createPool({
     create: async () => {
-        const browser = await puppeteer.launch({ headless: "new" });
+        const browser = await puppeteer.launch({headless: "new"});
         return browser;
     },
     destroy: async (browser) => {
@@ -81,25 +81,26 @@ async function auth(ejudgeLogin, ejudgePassword, contestID) {
         await withPage(async (page) => {
             try {
                 await page.goto('http://37.252.0.155/cgi-bin/master');
-
-                // Wait for all required elements at once
                 await Promise.all([
-                    page.waitForSelector('input[name=login]', { timeout: 2000 }),
-                    page.waitForSelector('input[name=password]', { timeout: 2000 }),
-                    page.waitForSelector('input[name=contest_id]', { timeout: 2000 }),
-                    page.waitForSelector('select[name=role]', { timeout: 2000 }),
-                    page.waitForSelector('input[name=action_2]', { timeout: 2000 }),
+                    page.waitForSelector('input[name=login]', {timeout: 2000}),
+                    page.waitForSelector('input[name=password]', {timeout: 2000}),
+                    page.waitForSelector('input[name=contest_id]', {timeout: 2000}),
+                    page.waitForSelector('select[name=role]', {timeout: 2000}),
+                    page.waitForSelector('input[name=action_2]', {timeout: 2000}),
                 ]);
-
-                await page.$eval('input[name=login]', (el, value) => { el.value = value }, ejudgeLogin);
-                await page.$eval('input[name=password]', (el, value) => { el.value = value }, ejudgePassword);
-                await page.$eval('input[name=contest_id]', (el, value) => { el.value = value }, contestID);
+                await page.$eval('input[name=login]', (el, value) => {
+                    el.value = value
+                }, ejudgeLogin);
+                await page.$eval('input[name=password]', (el, value) => {
+                    el.value = value
+                }, ejudgePassword);
+                await page.$eval('input[name=contest_id]', (el, value) => {
+                    el.value = value
+                }, contestID);
                 await page.$eval('select[name=role]', el => el.value = '6');
                 await page.click('input[name=action_2]');
-
                 currentUrl = page.url();
                 console.log(currentUrl);
-
                 if (currentUrl.includes('SID')) {
                     authenticated = true;
                 } else {
@@ -113,7 +114,6 @@ async function auth(ejudgeLogin, ejudgePassword, contestID) {
             }
         });
     }
-
     if (retries >= maxRetries && !authenticated) {
         throw new Error('Failed to authenticate after multiple retries');
     }
@@ -139,12 +139,15 @@ async function handleSolution(solutionFileBase64, taskID) {
 async function getResult() {
     return await withPage(async (page) => {
         await page.goto(currentUrl);
+
         async function getSubmissionStatus() {
             return await page.$eval('table.b1 > tbody > tr:nth-child(2) > td:nth-child(6)', el => el.textContent.trim());
         }
+
         async function getFailureDetails() {
             return await page.$eval('table.b1 > tbody > tr:nth-child(2) > td:nth-child(7)', el => el.textContent.trim());
         }
+
         let error = await getFailureDetails();
         let status = await getSubmissionStatus();
         while (status === 'Compiling...') {
@@ -156,7 +159,7 @@ async function getResult() {
             console.log('Failed at:', error, "test.");
         }
         console.log('Final status:', status);
-        return { status, error };
+        return {status, error};
     });
 }
 
@@ -165,7 +168,6 @@ async function parseTasks() {
         functionUrl = currentUrl.replace("&action=2", "") + `&problem=1&action_206`;
         console.log(functionUrl);
         await page.goto(functionUrl);
-
         const tasks = [];
         let currentTask = 1;
         while (true) {
@@ -190,7 +192,6 @@ async function parseTasks() {
         }
         return tasks;
     });
-
     return tasks;
 }
 
