@@ -193,15 +193,8 @@ module.exports = {
     handleSolution,
     getResult,
     parseTasks,
-    browser,
-    browserIsOpen,
     currentUrl,
     functionUrl,
-    fileExtension,
-    contestID,
-    ejudgeLogin,
-    ejudgePassword,
-    tasks,
 };
 
 //main();
