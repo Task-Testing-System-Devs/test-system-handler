@@ -50,7 +50,7 @@ app.get('/getResult', async (req, res) => {
 
 app.get('/parseTasks', async (req, res) => {
     try {
-        await parseTasks();
+        const tasks = await parseTasks();
         res.status(200).json({ message: tasks });
     } catch (error) {
         console.log(error.message);

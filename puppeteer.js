@@ -14,7 +14,7 @@ let fileExtension = solutionFilePath.split('.').pop();
 let contestID = 1;
 let ejudgeLogin = 'ejudge';
 let ejudgePassword = 'ejudge';
-let tasks = []
+
 
 // Create a browser pool
 const browserPool = createPool({
@@ -143,6 +143,7 @@ async function getResult() {
 }
 
 async function parseTasks() {
+    const tasks = []
     const browser = await browserPool.acquire();
     try {
         const page = await getPage(browser);
