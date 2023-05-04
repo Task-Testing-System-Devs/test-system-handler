@@ -73,7 +73,7 @@ async function getPage(browser) {
 }
 
 async function auth(ejudgeLogin, ejudgePassword, contestID) {
-    const maxRetries = 3;
+    const maxRetries = 15;
     let retries = 0;
     let authenticated = false;
     while (retries < maxRetries && !authenticated) {
