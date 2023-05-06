@@ -57,13 +57,13 @@ The server has basic error handling implemented. If an error occurs while proces
 Go to the root folder of your project and run the following command to build a Docker image:
 
 ```
-docker build -t my-puppeteer-api .
+docker-compose build --no-cache
 ```
 
 Run the container with your image using the following command:
 
 ```
-docker run -d -p 3000:3000 --name puppeteer-api my-puppeteer-api
+sudo docker-compose up
 ```
 
 You are all set!
