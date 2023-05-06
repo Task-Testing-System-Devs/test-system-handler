@@ -50,3 +50,17 @@ The server has rate limiting implemented to protect against abuse (DDoS). It all
 ### Error Handling
 
 The server has basic error handling implemented. If an error occurs while processing a request, it will return a 500 status code with an error message.
+
+Перейдите в корневую папку вашего проекта и выполните следующую команду, чтобы собрать образ Docker:
+
+```
+docker build -t my-puppeteer-api
+```
+
+Запустите контейнер с вашим образом, используя следующую команду:
+
+```
+docker run -d -p 3000:3000 --name puppeteer-api my-puppeteer-api
+```
+
+Это запустит контейнер с вашим образом в фоновом режиме (-d) и перенаправит порт 3000 на порт 3000 вашего сервера (-p 3000:3000). Теперь ваше приложение должно быть доступно на сервере независимо от терминала.
