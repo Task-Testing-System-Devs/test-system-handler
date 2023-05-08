@@ -68,7 +68,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'An error occurred while processing the request' });
 });
 
-app.listen(port, '127.0.0.1', () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Puppeteer API listening at http://0.0.0.0:${port}`);
 });
 
