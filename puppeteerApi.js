@@ -31,12 +31,12 @@ app.post('/auth', async (req, res) => {
 
 app.post('/handleSolution', async (req, res) => {
     try {
-        const { solutionFileBase64, taskID } = req.body;
+        const { solutionFileBase64, taskID, language } = req.body;
         if (!taskID) {
             res.status(400).json({ error: 'Task ID is required' });
             return;
         }
-        await handleSolution(solutionFileBase64, taskID);
+        await handleSolution(solutionFileBase64, taskID, language);
         res.status(200).json({ message: 'Solution handled successfully' });
     } catch (error) {
         console.log(error);
@@ -68,7 +68,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'An error occurred while processing the request' });
 });
 
-app.listen(port, '0.0.0.0', () => {
+app.listen(port, '127.0.0.1', () => {
     console.log(`Puppeteer API listening at http://0.0.0.0:${port}`);
 });
 

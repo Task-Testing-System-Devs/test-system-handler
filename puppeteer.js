@@ -120,14 +120,14 @@ async function auth(ejudgeLogin, ejudgePassword, contestID) {
 }
 
 
-async function handleSolution(solutionFileBase64, taskID) {
+async function handleSolution(solutionFileBase64, taskID, language) {
     await withPage(async (page) => {
         const solutionFilePath = path.join(os.tmpdir(), `solution.py`);
         await fs.writeFile(solutionFilePath, Buffer.from(solutionFileBase64, 'base64'));
         functionUrl = currentUrl.replace("&action=2", "") + `&problem=${taskID}&action_206`;
         console.log(functionUrl);
         await page.goto(functionUrl);
-        await page.select('select[name="lang_id"]', languageExtensions['py']);
+        await page.select('select[name="lang_id"]', language);
         const inputUploadHandle = await page.$('input[type="file"]');
         await inputUploadHandle.uploadFile(solutionFilePath);
         await page.click('input[type="submit"][name="action_40"]');
