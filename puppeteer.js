@@ -119,7 +119,6 @@ async function auth(ejudgeLogin, ejudgePassword, contestID) {
     }
 }
 
-
 async function handleSolution(solutionFileBase64, taskID, language) {
     await withPage(async (page) => {
         const solutionFilePath = path.join(os.tmpdir(), `solution.py`);
