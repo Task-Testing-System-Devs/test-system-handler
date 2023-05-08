@@ -21,13 +21,15 @@ const browserPool = createPool({
 });
 
 class Task {
-    constructor(probId, timeLimit, realTimeLimit, memoryLimit, title, description) {
+    constructor(probId, timeLimit, realTimeLimit, memoryLimit, title, description, inputExamples, outputExamples) {
         this.probId = probId;
         this.timeLimit = timeLimit;
         this.realTimeLimit = realTimeLimit;
         this.memoryLimit = memoryLimit;
         this.title = title;
         this.description = description;
+        this.inputExamples = inputExamples;
+        this.outputExamples = outputExamples;
     }
 }
 
@@ -176,7 +178,16 @@ async function parseTasks() {
             const memoryLimit = await page.$eval("table:nth-of-type(2) tr:nth-child(4) td:nth-child(2)", (el) => el.innerText);
             const title = await page.$eval("h3", (el) => el.innerText);
             const description = await page.$eval("h3 + p", (el) => el.innerText);
-            const task = new Task(probId, timeLimit, realTimeLimit, memoryLimit, title, description);
+            const inputExamples = await page.evaluate(() => {
+                const inputHeaders = Array.from(document.querySelectorAll("h4")).filter((header) => header.innerText.includes("Input"));
+                return inputHeaders.map((header) => header.nextElementSibling.innerText);
+            });
+            const outputExamples = await page.evaluate(() => {
+                const outputHeaders = Array.from(document.querySelectorAll("h4")).filter((header) => header.innerText.includes("Output"));
+                return outputHeaders.map((header) => header.nextElementSibling.innerText);
+            });
+            const task = new Task(probId, timeLimit, realTimeLimit, memoryLimit, title, description, inputExamples, outputExamples);
+            console.log(inputExamples);
             tasks.push(task);
             currentTask++;
             const nextProblemButton = await page.$(`a[href*="action=206&problem=${currentTask}"]`);
